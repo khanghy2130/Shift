@@ -1,5 +1,5 @@
-const CELL_SCALE = 45;
-const OUTLINE_THICKNESS = 0.7;
+const CELL_SCALE = 270;
+const OUTLINE_THICKNESS = 4;
 const BO = [348, 300]; // BOARD OFFSET
 const SLIDE_SPEED = 0.08;
 const COLORS = {};
@@ -448,7 +448,6 @@ for (let i = 0; i < LEVELS.length; i++) {
 }
 
 let goalImg;
-let checkmarkSize = 0;
 let transitionSquares = []; // {pos, vel, r, img}
 let isAtTitle = true;
 let titleImg;
@@ -460,9 +459,9 @@ let cellsMap = {}; // key: planeNum + "," + cellNum
 let cellKeys = [];
 let allRows = [];
 
-var startTime = 0;
-var timeElapsed = 0;
-var gameEnded = false;
+let startTime = 0;
+let timeElapsed = 0;
+let gameEnded = false;
 
 let shifting = {
   active: false,
@@ -588,7 +587,6 @@ function loadLevel() {
     }
   } while (checkWin());
   shifting.display.row = null;
-  checkmarkSize = 0;
 }
 
 function checkWin() {
@@ -605,29 +603,42 @@ function checkWin() {
 }
 
 function setupTransition() {
+  g = 0;
   transitionSquares = []; // reset
   for (let y = 0; y < 4; y++) {
     for (let x = 0; x < 4; x++) {
       transitionSquares.push({
         img: get(x * 150, y * 150, 150, 150),
-        pos: [x * 150 + 60, y * 150 + 60],
-        vel: [random(-6, 6), random(-24, 0)],
+        pos: [x * 150 + 75, y * 150 + 75],
+        vel: [random(-6, 6), random(-50, -40)],
         r: [0, random(-5, 5)],
       });
     }
   }
 }
 
+function windowResized() {
+  viewportWidth = Math.min(window.innerWidth, window.innerHeight);
+  scaleFactor = viewportWidth / 600;
+  canvas.elt.style.transform = "scale(" + scaleFactor + ")";
+}
+
+let scaleFactor = 1;
+let canvas;
 function setup() {
-  createCanvas(600, 600);
+  canvas = createCanvas(600, 600, document.getElementById("game-canvas"));
+  windowResized();
+
+  textFont("monospace");
+  pixelDensity(1);
   textAlign(CENTER, CENTER);
   rectMode(CENTER);
   imageMode(CENTER);
   angleMode(DEGREES);
   strokeJoin(ROUND);
 
-  COLORS.BG = color(30);
-  COLORS.LIGHT = color(220);
+  COLORS.BG = 30;
+  COLORS.LIGHT = 220;
   COLORS.SLICES = [
     color(115, 170, 255), // blue
     color(115, 255, 75), // green
@@ -769,49 +780,77 @@ function setup() {
 }
 
 function makeTitle() {
-  background(COLORS.BG);
+  clear();
   noFill();
-  stroke(COLORS.LIGHT);
+  stroke(255);
   strokeWeight(6);
 
   // I
-  quad(_(62), _(20), _(58), _(20), _(38), _(80), _(42), _(80));
+  quad(372, 120, 348, 120, 228, 480, 252, 480);
   // H
-  quad(_(54), _(20), _(50), _(20), _(40), _(50), _(44), _(50));
-  quad(_(44), _(20), _(40), _(20), _(30), _(50), _(34), _(50));
+  quad(324, 120, 300, 120, 240, 300, 264, 300);
+  quad(264, 120, 240, 120, 180, 300, 204, 300);
   quad(
     // middle
-    _(44.3),
-    _(37),
-    _(38.3),
-    _(37),
-    _(39.7),
-    _(33),
-    _(45.7),
-    _(33)
+    265.8,
+    222,
+    229.8,
+    222,
+    238.2,
+    198,
+    274.2,
+    198
   );
   // S
-  quad(_(36), _(20), _(22), _(20), _(20.6), _(24), _(34.6), _(24));
-  quad(_(26), _(50), _(12), _(50), _(13.3), _(46), _(27.3), _(46));
-  quad(_(30.3), _(37), _(16.3), _(37), _(17.7), _(33), _(31.7), _(33));
-  quad(_(30.3), _(37), _(27.3), _(46), _(23.3), _(46), _(26.3), _(37));
-  quad(_(20.6), _(24), _(17.7), _(33), _(21.7), _(33), _(24.6), _(24));
+  quad(216, 120, 132, 120, 123.6, 144, 207.6, 144);
+  quad(156, 300, 72, 300, 79.8, 276, 163.8, 276);
+  quad(181.8, 222, 97.8, 222, 106.2, 198, 190.2, 198);
+  quad(181.8, 222, 163.8, 276, 139.8, 276, 157.8, 222);
+  quad(123.6, 144, 106.2, 198, 130.2, 198, 147.6, 144);
   // F
-  quad(_(56), _(50), _(60), _(50), _(50), _(80), _(46), _(80));
-  quad(_(60), _(50), _(70), _(50), _(68.7), _(54), _(58.7), _(54));
-  quad(_(55.7), _(63), _(64.4), _(63), _(63.1), _(67), _(54.4), _(67));
+  quad(336, 300, 360, 300, 300, 480, 276, 480);
+  quad(360, 300, 420, 300, 412.2, 324, 352.2, 324);
+  quad(334.2, 378, 386.4, 378, 378.6, 402, 326.4, 402);
   // T
-  quad(_(74), _(50), _(88), _(50), _(86.7), _(54), _(72.7), _(54));
-  quad(_(81.7), _(54), _(77.7), _(54), _(69), _(80), _(73), _(80));
+  quad(444, 300, 528, 300, 520.2, 324, 436.2, 324);
+  quad(490.2, 324, 466.2, 324, 414, 480, 438, 480);
 
-  titleImg = get();
+  let msk = get();
+  msk.loadPixels(); // Load pixel data
+  // Iterate through each pixel
+  for (let x = 0; x < msk.width; x++) {
+    for (let y = 0; y < msk.height; y++) {
+      let index = (x + y * msk.width) * 4; // Calculate pixel index
+      if (msk.pixels[index + 3] === 255) {
+        msk.pixels[index + 3] = 0;
+      } else {
+        msk.pixels[index] = COLORS.BG;
+        msk.pixels[index + 1] = COLORS.BG;
+        msk.pixels[index + 2] = COLORS.BG;
+        msk.pixels[index + 3] = 255;
+      }
+    }
+  }
+  msk.updatePixels(); // Update image with modified pixels
+  titleImg = msk;
   background(COLORS.BG);
 }
 
 let touchCountdown = 0;
+let _mouseX, _mouseY;
 function draw() {
+  _mouseX = floor(mouseX / scaleFactor);
+  _mouseY = floor(mouseY / scaleFactor);
   touchCountdown--;
   if (isAtTitle) {
+    colorMode(HSB);
+    strokeWeight(12);
+    for (var i = 0; i < width / 8; i++) {
+      stroke((frameCount * 1.5 + i * 2) % 360, 180, 255);
+      line(i * 16, 0, i * 16 - width, width);
+    }
+
+    colorMode(RGB);
     image(titleImg, 300, 300, 600);
     fill(255);
     textSize(24);
@@ -826,16 +865,7 @@ function draw() {
 
   // checkmark  /////// will be removed
   if (levelsSolved[level]) {
-    if (checkmarkSize < 48) {
-      checkmarkSize += (48 - checkmarkSize) * 0.05 + 0.02;
-    }
-    noStroke();
-    fill(COLORS.LIGHT);
-    ellipse(_(32), _(8), checkmarkSize, checkmarkSize);
-    stroke(COLORS.BG);
-    strokeWeight(_(1.2));
-    line(_(30.3), _(8), _(31.5), _(10));
-    line(_(33.5), _(6), _(31.5), _(10));
+    //////
   }
 
   // render cell slices
@@ -858,7 +888,7 @@ function draw() {
   }
 
   // render cell outlines
-  strokeWeight(_(OUTLINE_THICKNESS));
+  strokeWeight(OUTLINE_THICKNESS);
   stroke(COLORS.BG);
   noFill();
   for (let i = 0; i < cellKeys.length; i++) {
@@ -1111,7 +1141,7 @@ function draw() {
       }
 
       // render first outline
-      strokeWeight(_(OUTLINE_THICKNESS));
+      strokeWeight(OUTLINE_THICKNESS);
       stroke(COLORS.BG);
       noFill();
       if (i === 3) {
@@ -1165,8 +1195,8 @@ function draw() {
     let draggedCell = cellsMap[shifting.cellKey];
     let rows = draggedCell.rows;
     let distances = [[], []];
-    const mx = mouseX + offsetMouse[0];
-    const my = mouseY + offsetMouse[1];
+    const mx = _mouseX + offsetMouse[0];
+    const my = _mouseY + offsetMouse[1];
     for (let i = 0; i < rows[0].length; i++) {
       let ckA = rows[0][i];
       let ckB = rows[1][i];
@@ -1309,16 +1339,16 @@ function draw() {
   if (!gameEnded) {
     timeElapsed = Date.now() - startTime;
   }
-  textSize(_(6));
-  var minute = floor(timeElapsed / 60000);
-  var sec = floor((timeElapsed % 60000) / 1000) + "";
+  textSize(36);
+  let minute = floor(timeElapsed / 60000);
+  let sec = floor((timeElapsed % 60000) / 1000) + "";
   if (sec.length === 1) {
     sec = "0" + sec;
   }
   fill(250);
-  text("".concat(minute, ":").concat(sec), _(90), _(10));
+  text("".concat(minute, ":").concat(sec), 540, 60);
 
-  // change level buttons
+  // change level buttons /////// remove
   strokeWeight(_(1.2));
   if (level > 0) {
     noStroke();
@@ -1328,7 +1358,6 @@ function draw() {
     line(_(12), _(88), _(8), _(90));
     line(_(12), _(92), _(8), _(90));
   }
-
   if (level < LEVELS.length - 1) {
     noStroke();
     fill(COLORS.LIGHT);
@@ -1338,7 +1367,7 @@ function draw() {
     line(_(20), _(92), _(24), _(90));
   }
 
-  // level dots
+  // level dots //////// remove
   for (let i = 0; i < ceil(LEVELS.length / 2); i++) {
     fill(levelsSolved[i * 2] ? COLORS.SLICES[1] : COLORS.LIGHT);
     if (level === i * 2) {
@@ -1352,27 +1381,29 @@ function draw() {
     if (level === i * 2 + 1) {
       fill(COLORS.SLICES[2]);
     }
-    circle(_(10), _(35 + i * 4), _(3.5));
+    circle(60, _(35 + i * 4), _(3.5));
   }
 
   // transition squares
+  g = min(1, g + 0.01);
   for (let i = transitionSquares.length - 1; i >= 0; i--) {
     let ts = transitionSquares[i];
-    if (ts.pos[1] > _(120)) {
+    if (ts.pos[1] > 720) {
       // despawn
       transitionSquares.splice(i, 1);
     }
-    ts.r[0] += ts.r[1];
-    ts.pos[0] += ts.vel[0];
-    ts.pos[1] += ts.vel[1];
+    ts.r[0] += ts.r[1] * g;
+    ts.pos[0] += ts.vel[0] * g;
+    ts.pos[1] += ts.vel[1] * g;
     ts.vel[1] += 0.9; // GRAVITY
     push();
     translate(ts.pos[0], ts.pos[1]);
     rotate(ts.r[0]);
-    image(ts.img, 0, 0, _(20));
+    image(ts.img, 0, 0, 150, 150);
     pop();
   }
 }
+let g = 0;
 
 let offsetMouse = [0, 0];
 
@@ -1400,8 +1431,8 @@ function touchStarted() {
         shifting.display.slideProgress = 0;
         shifting.display.step = 0;
         offsetMouse = [
-          cellsMap[cellKeys[i]].center[0] - mouseX,
-          cellsMap[cellKeys[i]].center[1] - mouseY,
+          cellsMap[cellKeys[i]].center[0] - _mouseX,
+          cellsMap[cellKeys[i]].center[1] - _mouseY,
         ];
         return;
       }
@@ -1409,13 +1440,13 @@ function touchStarted() {
   }
 
   // button clicked
-  if (mouseY > _(90 - 5) && mouseY < _(90 + 5)) {
-    if (mouseX > _(10 - 5) && mouseX < _(10 + 5)) {
+  if (_mouseY > _(90 - 5) && _mouseY < _(90 + 5)) {
+    if (_mouseX > _(10 - 5) && _mouseX < _(10 + 5)) {
       if (level > 0) {
         level--;
         loadLevel();
       }
-    } else if (mouseX > _(22 - 5) && mouseX < _(22 + 5)) {
+    } else if (_mouseX > _(22 - 5) && _mouseX < _(22 + 5)) {
       if (level < LEVELS.length - 1) {
         level++;
         loadLevel();
@@ -1431,24 +1462,24 @@ function touchEnded() {
 }
 
 function mouseOnCell(corners) {
-  var p1 = corners[0],
+  let p1 = corners[0],
     p2 = corners[1],
     p3 = corners[2],
     p4 = corners[3];
   return (
-    pointInTriangle([mouseX, mouseY], p1, p2, p3) ||
-    pointInTriangle([mouseX, mouseY], p1, p3, p4)
+    pointInTriangle([_mouseX, _mouseY], p1, p2, p3) ||
+    pointInTriangle([_mouseX, _mouseY], p1, p3, p4)
   );
 }
 function sign(p1, p2, p3) {
   return (p1[0] - p3[0]) * (p2[1] - p3[1]) - (p2[0] - p3[0]) * (p1[1] - p3[1]);
 }
 function pointInTriangle(pt, v1, v2, v3) {
-  var d1 = sign(pt, v1, v2);
-  var d2 = sign(pt, v2, v3);
-  var d3 = sign(pt, v3, v1);
-  var has_neg = d1 < 0 || d2 < 0 || d3 < 0;
-  var has_pos = d1 > 0 || d2 > 0 || d3 > 0;
+  let d1 = sign(pt, v1, v2);
+  let d2 = sign(pt, v2, v3);
+  let d3 = sign(pt, v3, v1);
+  let has_neg = d1 < 0 || d2 < 0 || d3 < 0;
+  let has_pos = d1 > 0 || d2 > 0 || d3 > 0;
   return !(has_neg && has_pos);
 }
 
