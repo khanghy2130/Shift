@@ -1,4 +1,4 @@
-const CELL_SCALE = 270;
+const CELL_SCALE = 250;
 const OUTLINE_THICKNESS = 4;
 const BO = [348, 300]; // BOARD OFFSET
 const SLIDE_SPEED = 0.08;
@@ -449,7 +449,7 @@ for (let i = 0; i < LEVELS.length; i++) {
 
 let goalImg;
 let transitionSquares = []; // {pos, vel, r, img}
-let isAtTitle = true;
+let scene = "TITLE"; // TITLE, MENU, PLAY
 let titleImg;
 
 let level = 0;
@@ -786,34 +786,34 @@ function makeTitle() {
   strokeWeight(6);
 
   // I
-  quad(372, 120, 348, 120, 228, 480, 252, 480);
+  quad(372, 70, 348, 70, 228, 430, 252, 430);
   // H
-  quad(324, 120, 300, 120, 240, 300, 264, 300);
-  quad(264, 120, 240, 120, 180, 300, 204, 300);
+  quad(324, 70, 300, 70, 240, 250, 264, 250);
+  quad(264, 70, 240, 70, 180, 250, 204, 250);
   quad(
     // middle
     265.8,
-    222,
+    172,
     229.8,
-    222,
+    172,
     238.2,
-    198,
+    148,
     274.2,
-    198
+    148
   );
   // S
-  quad(216, 120, 132, 120, 123.6, 144, 207.6, 144);
-  quad(156, 300, 72, 300, 79.8, 276, 163.8, 276);
-  quad(181.8, 222, 97.8, 222, 106.2, 198, 190.2, 198);
-  quad(181.8, 222, 163.8, 276, 139.8, 276, 157.8, 222);
-  quad(123.6, 144, 106.2, 198, 130.2, 198, 147.6, 144);
+  quad(216, 70, 132, 70, 123.6, 94, 207.6, 94);
+  quad(156, 250, 72, 250, 79.8, 226, 163.8, 226);
+  quad(181.8, 172, 97.8, 172, 106.2, 148, 190.2, 148);
+  quad(181.8, 172, 163.8, 226, 139.8, 226, 157.8, 172);
+  quad(123.6, 94, 106.2, 148, 130.2, 148, 147.6, 94);
   // F
-  quad(336, 300, 360, 300, 300, 480, 276, 480);
-  quad(360, 300, 420, 300, 412.2, 324, 352.2, 324);
-  quad(334.2, 378, 386.4, 378, 378.6, 402, 326.4, 402);
+  quad(336, 250, 360, 250, 300, 430, 276, 430);
+  quad(360, 250, 420, 250, 412.2, 274, 352.2, 274);
+  quad(334.2, 328, 386.4, 328, 378.6, 352, 326.4, 352);
   // T
-  quad(444, 300, 528, 300, 520.2, 324, 436.2, 324);
-  quad(490.2, 324, 466.2, 324, 414, 480, 438, 480);
+  quad(444, 250, 528, 250, 520.2, 274, 436.2, 274);
+  quad(490.2, 274, 466.2, 274, 414, 430, 438, 430);
 
   let msk = get();
   msk.loadPixels(); // Load pixel data
@@ -839,549 +839,557 @@ function makeTitle() {
 let touchCountdown = 0;
 let _mouseX, _mouseY;
 function draw() {
+  cursor(ARROW);
   _mouseX = floor(mouseX / scaleFactor);
   _mouseY = floor(mouseY / scaleFactor);
   touchCountdown--;
-  if (isAtTitle) {
+  if (scene === "PLAY") {
+    background(COLORS.BG);
+    // goal image
+    image(goalImg, 84, 90, 156, 156);
+
+    // checkmark  /////// will be removed
+    if (levelsSolved[level]) {
+      //////
+    }
+
+    // render cell slices
+    noStroke();
+    for (let i = 0; i < cellKeys.length; i++) {
+      let c = cellsMap[cellKeys[i]];
+      let cc = c.corners;
+
+      for (let s = 0; s < c.slices.length; s++) {
+        fill(COLORS.SLICES[c.slices[s]]);
+        triangle(
+          c.center[0],
+          c.center[1],
+          cc[s][0],
+          cc[s][1],
+          cc[nsi(s + 1)][0],
+          cc[nsi(s + 1)][1]
+        );
+      }
+    }
+
+    // render cell outlines
+    strokeWeight(OUTLINE_THICKNESS);
+    stroke(COLORS.BG);
+    noFill();
+    for (let i = 0; i < cellKeys.length; i++) {
+      let cc = cellsMap[cellKeys[i]].corners;
+      quad(
+        cc[0][0],
+        cc[0][1],
+        cc[1][0],
+        cc[1][1],
+        cc[2][0],
+        cc[2][1],
+        cc[3][0],
+        cc[3][1]
+      );
+    }
+
+    // render shifting display
+    if (shifting.display.row !== null) {
+      let sp = shifting.display.slideProgress;
+      let csList = getShiftedRow();
+
+      // for each cell in row
+      for (let i = 0; i < shifting.display.row.length; i++) {
+        let c1 = cellsMap[shifting.display.row[i]];
+        let c2 = cellsMap[shifting.display.row[nsi(i + 1)]];
+        let cc1 = c1.corners;
+        let cc2 = c2.corners;
+        let slices = csList[i];
+        // correct cc: put the last item to the top of list
+        if (i === 1 || i === 2) {
+          // correct cc2
+          cc2 = [cc2[3], cc2[0], cc2[1], cc2[2]];
+        }
+        if (i === 2 || i === 3) {
+          // correct cc1
+          cc1 = [cc1[3], cc1[0], cc1[1], cc1[2]];
+        }
+        if (i === 2 || i === 3) {
+          // correct slices
+          slices = [slices[3], slices[0], slices[1], slices[2]];
+        }
+
+        // 2 points where a slice is cut
+        let cc1Cuts = [
+          [
+            map(sp, 1, 0, cc1[0][0], cc1[3][0]),
+            map(sp, 1, 0, cc1[0][1], cc1[3][1]),
+          ],
+          [
+            map(sp, 0, 1, cc1[0][0], cc1[3][0]),
+            map(sp, 0, 1, cc1[0][1], cc1[3][1]),
+          ],
+        ];
+        let cc2Cuts = [
+          [
+            map(sp, 1, 0, cc2[1][0], cc2[2][0]),
+            map(sp, 1, 0, cc2[1][1], cc2[2][1]),
+          ],
+          [
+            map(sp, 0, 1, cc2[1][0], cc2[2][0]),
+            map(sp, 0, 1, cc2[1][1], cc2[2][1]),
+          ],
+        ];
+
+        // render slices (2 different rendering stages)
+        noStroke();
+        let movingCenter;
+        if (sp < 0.5) {
+          movingCenter = [
+            map(
+              sp + 0.5,
+              0,
+              1,
+              (cc1[1][0] + cc1[2][0]) / 2,
+              (cc1[0][0] + cc1[3][0]) / 2
+            ),
+            map(
+              sp + 0.5,
+              0,
+              1,
+              (cc1[1][1] + cc1[2][1]) / 2,
+              (cc1[0][1] + cc1[3][1]) / 2
+            ),
+          ];
+
+          // back triangle (index 1)
+          fill(COLORS.SLICES[slices[1]]);
+          triangle(
+            map(sp, 1, 0, cc1[0][0], cc1[1][0]),
+            map(sp, 1, 0, cc1[0][1], cc1[1][1]),
+            map(sp, 0, 1, cc1[2][0], cc1[3][0]),
+            map(sp, 0, 1, cc1[2][1], cc1[3][1]),
+            movingCenter[0],
+            movingCenter[1]
+          );
+
+          // side triangles (index 0)
+          fill(COLORS.SLICES[slices[0]]);
+          quad(
+            cc1[0][0],
+            cc1[0][1],
+            map(sp, 1, 0, cc1[0][0], cc1[1][0]),
+            map(sp, 1, 0, cc1[0][1], cc1[1][1]),
+            movingCenter[0],
+            movingCenter[1],
+            cc1Cuts[1][0],
+            cc1Cuts[1][1]
+          );
+          triangle(
+            cc2[1][0],
+            cc2[1][1],
+            map(sp, 1, 0, cc2[0][0], cc2[1][0]),
+            map(sp, 1, 0, cc2[0][1], cc2[1][1]),
+            cc2Cuts[1][0],
+            cc2Cuts[1][1]
+          );
+
+          // side triangles (index 2)
+          fill(COLORS.SLICES[slices[2]]);
+          quad(
+            cc1[3][0],
+            cc1[3][1],
+            map(sp, 0, 1, cc1[2][0], cc1[3][0]),
+            map(sp, 0, 1, cc1[2][1], cc1[3][1]),
+            movingCenter[0],
+            movingCenter[1],
+            cc1Cuts[0][0],
+            cc1Cuts[0][1]
+          );
+          triangle(
+            cc2[2][0],
+            cc2[2][1],
+            map(sp, 0, 1, cc2[2][0], cc2[3][0]),
+            map(sp, 0, 1, cc2[2][1], cc2[3][1]),
+            cc2Cuts[0][0],
+            cc2Cuts[0][1]
+          );
+
+          // front triangle (index 3)
+          fill(COLORS.SLICES[slices[3]]);
+          triangle(
+            cc1Cuts[0][0],
+            cc1Cuts[0][1],
+            cc1Cuts[1][0],
+            cc1Cuts[1][1],
+            movingCenter[0],
+            movingCenter[1]
+          );
+          quad(
+            cc2Cuts[1][0],
+            cc2Cuts[1][1],
+            cc2Cuts[0][0],
+            cc2Cuts[0][1],
+            map(sp, 0, 1, cc2[2][0], cc2[3][0]),
+            map(sp, 0, 1, cc2[2][1], cc2[3][1]),
+            map(sp, 1, 0, cc2[0][0], cc2[1][0]),
+            map(sp, 1, 0, cc2[0][1], cc2[1][1])
+          );
+        } else {
+          movingCenter = [
+            map(
+              sp - 0.5,
+              0,
+              1,
+              (cc2[1][0] + cc2[2][0]) / 2,
+              (cc2[0][0] + cc2[3][0]) / 2
+            ),
+            map(
+              sp - 0.5,
+              0,
+              1,
+              (cc2[1][1] + cc2[2][1]) / 2,
+              (cc2[0][1] + cc2[3][1]) / 2
+            ),
+          ];
+
+          // front triangle (index 3)
+          fill(COLORS.SLICES[slices[3]]);
+          triangle(
+            map(sp, 1, 0, cc2[0][0], cc2[1][0]),
+            map(sp, 1, 0, cc2[0][1], cc2[1][1]),
+            map(sp, 0, 1, cc2[2][0], cc2[3][0]),
+            map(sp, 0, 1, cc2[2][1], cc2[3][1]),
+            movingCenter[0],
+            movingCenter[1]
+          );
+
+          // side triangles (index 0)
+          fill(COLORS.SLICES[slices[0]]);
+          quad(
+            cc2[1][0],
+            cc2[1][1],
+            map(sp, 1, 0, cc2[0][0], cc2[1][0]),
+            map(sp, 1, 0, cc2[0][1], cc2[1][1]),
+            movingCenter[0],
+            movingCenter[1],
+            cc2Cuts[0][0],
+            cc2Cuts[0][1]
+          );
+          triangle(
+            cc1[0][0],
+            cc1[0][1],
+            map(sp, 1, 0, cc1[0][0], cc1[1][0]),
+            map(sp, 1, 0, cc1[0][1], cc1[1][1]),
+            cc1Cuts[0][0],
+            cc1Cuts[0][1]
+          );
+
+          // side triangles (index 2)
+          fill(COLORS.SLICES[slices[2]]);
+          quad(
+            cc2[2][0],
+            cc2[2][1],
+            map(sp, 0, 1, cc2[2][0], cc2[3][0]),
+            map(sp, 0, 1, cc2[2][1], cc2[3][1]),
+            movingCenter[0],
+            movingCenter[1],
+            cc2Cuts[1][0],
+            cc2Cuts[1][1]
+          );
+          triangle(
+            cc1[3][0],
+            cc1[3][1],
+            map(sp, 0, 1, cc1[2][0], cc1[3][0]),
+            map(sp, 0, 1, cc1[2][1], cc1[3][1]),
+            cc1Cuts[1][0],
+            cc1Cuts[1][1]
+          );
+
+          // back triangle (index 1)
+          fill(COLORS.SLICES[slices[1]]);
+          triangle(
+            cc2Cuts[0][0],
+            cc2Cuts[0][1],
+            cc2Cuts[1][0],
+            cc2Cuts[1][1],
+            movingCenter[0],
+            movingCenter[1]
+          );
+          quad(
+            cc1Cuts[0][0],
+            cc1Cuts[0][1],
+            cc1Cuts[1][0],
+            cc1Cuts[1][1],
+            map(sp, 0, 1, cc1[2][0], cc1[3][0]),
+            map(sp, 0, 1, cc1[2][1], cc1[3][1]),
+            map(sp, 1, 0, cc1[0][0], cc1[1][0]),
+            map(sp, 1, 0, cc1[0][1], cc1[1][1])
+          );
+        }
+
+        // render first outline
+        strokeWeight(OUTLINE_THICKNESS);
+        stroke(COLORS.BG);
+        noFill();
+        if (i === 3) {
+          quad(
+            map(sp, 0, 1, cc2[2][0], cc2[3][0]),
+            map(sp, 0, 1, cc2[2][1], cc2[3][1]),
+            map(sp, 1, 0, cc2[0][0], cc2[1][0]),
+            map(sp, 1, 0, cc2[0][1], cc2[1][1]),
+            cc2[1][0],
+            cc2[1][1],
+            cc2[2][0],
+            cc2[2][1]
+          );
+          quad(
+            map(sp, 0, 1, cc1[1][0], cc1[0][0]),
+            map(sp, 0, 1, cc1[1][1], cc1[0][1]),
+            map(sp, 1, 0, cc1[3][0], cc1[2][0]),
+            map(sp, 1, 0, cc1[3][1], cc1[2][1]),
+            cc1[3][0],
+            cc1[3][1],
+            cc1[0][0],
+            cc1[0][1]
+          );
+        } else {
+          beginShape();
+          vertex(
+            map(sp, 0, 1, cc2[2][0], cc2[3][0]),
+            map(sp, 0, 1, cc2[2][1], cc2[3][1])
+          );
+          vertex(
+            map(sp, 1, 0, cc2[0][0], cc2[1][0]),
+            map(sp, 1, 0, cc2[0][1], cc2[1][1])
+          );
+          vertex(cc1[0][0], cc1[0][1]);
+          vertex(
+            map(sp, 0, 1, cc1[1][0], cc1[0][0]),
+            map(sp, 0, 1, cc1[1][1], cc1[0][1])
+          );
+          vertex(
+            map(sp, 1, 0, cc1[3][0], cc1[2][0]),
+            map(sp, 1, 0, cc1[3][1], cc1[2][1])
+          );
+          vertex(cc1[3][0], cc1[3][1]);
+          endShape(CLOSE);
+        }
+      }
+    }
+
+    // shifting update
+    if (shifting.active) {
+      let draggedCell = cellsMap[shifting.cellKey];
+      let rows = draggedCell.rows;
+      let distances = [[], []];
+      const mx = _mouseX + offsetMouse[0];
+      const my = _mouseY + offsetMouse[1];
+      for (let i = 0; i < rows[0].length; i++) {
+        let ckA = rows[0][i];
+        let ckB = rows[1][i];
+        distances[0].push(
+          dist(mx, my, cellsMap[ckA].center[0], cellsMap[ckA].center[1])
+        );
+        distances[1].push(
+          dist(mx, my, cellsMap[ckB].center[0], cellsMap[ckB].center[1])
+        );
+      }
+      let targetSlider = { combinedDist: Infinity }; // {isRowA, indices, combinedDist}
+      for (let i = 0; i < distances[0].length - 1; i++) {
+        if (distances[0][i] + distances[0][i + 1] < targetSlider.combinedDist) {
+          targetSlider = {
+            rowIndex: 0,
+            indices: [i, i + 1],
+            combinedDist: distances[0][i] + distances[0][i + 1],
+          };
+        }
+        if (distances[1][i] + distances[1][i + 1] < targetSlider.combinedDist) {
+          targetSlider = {
+            rowIndex: 1,
+            indices: [i, i + 1],
+            combinedDist: distances[1][i] + distances[1][i + 1],
+          };
+        }
+      }
+
+      let slideProgress = map(
+        distances[targetSlider.rowIndex][targetSlider.indices[0]] -
+          distances[targetSlider.rowIndex][targetSlider.indices[1]],
+        -CELL_SCALE * 2,
+        CELL_SCALE * 2,
+        0,
+        1
+      );
+      slideProgress = constrain(slideProgress, 0, 1);
+      let row = rows[targetSlider.rowIndex];
+      let step = targetSlider.indices[0] - row.indexOf(shifting.cellKey);
+
+      // update shifting display
+      // wrong row?
+      if (shifting.display.row !== row) {
+        // at origin? switch row, else backtrack to origin
+        if (shifting.display.step === 0) {
+          // still need to decrease sp?
+          if (shifting.display.slideProgress > 0) {
+            shifting.display.slideProgress = max(
+              0,
+              shifting.display.slideProgress - SLIDE_SPEED
+            );
+          }
+          // at exact origin? switch row
+          else if (shifting.display.slideProgress === 0) {
+            shifting.display.row = row; // switch row
+            shifting.display.slideProgress = 0;
+          }
+        } else {
+          // is ahead of origin? sp--, else sp++
+          if (shifting.display.step > 0) {
+            shifting.display.slideProgress -= SLIDE_SPEED;
+            if (shifting.display.slideProgress <= 0) {
+              shifting.display.slideProgress = 1;
+              shifting.display.step--;
+            }
+          } else {
+            // opposite of above
+            shifting.display.slideProgress += SLIDE_SPEED;
+            if (shifting.display.slideProgress >= 1) {
+              shifting.display.slideProgress = 0;
+              shifting.display.step++;
+            }
+          }
+        }
+      }
+      // correct row, catch up
+      else {
+        // at target step? match target sp
+        if (shifting.display.step === step) {
+          if (shifting.display.slideProgress < slideProgress) {
+            shifting.display.slideProgress = min(
+              slideProgress,
+              shifting.display.slideProgress + SLIDE_SPEED
+            );
+          } else {
+            shifting.display.slideProgress = max(
+              slideProgress,
+              shifting.display.slideProgress - SLIDE_SPEED
+            );
+          }
+        } else {
+          // is ahead of target? sp--, else sp++
+          if (shifting.display.step > step) {
+            shifting.display.slideProgress -= SLIDE_SPEED;
+            if (shifting.display.slideProgress <= 0) {
+              shifting.display.slideProgress = 1;
+              shifting.display.step--;
+            }
+          } else {
+            shifting.display.slideProgress += SLIDE_SPEED;
+            if (shifting.display.slideProgress >= 1) {
+              shifting.display.slideProgress = 0;
+              shifting.display.step++;
+            }
+          }
+        }
+      }
+    }
+    // shifting.active is false
+    else if (shifting.display.row !== null) {
+      // sp goes towards 1 or 0
+      if (shifting.display.slideProgress > 0.5) {
+        shifting.display.slideProgress += SLIDE_SPEED;
+        if (shifting.display.slideProgress >= 1) {
+          shifting.display.step++;
+          shifting.display.slideProgress = 0;
+        }
+      } else {
+        shifting.display.slideProgress -= SLIDE_SPEED;
+        if (shifting.display.slideProgress <= 0) {
+          shifting.display.slideProgress = 0;
+        }
+      }
+
+      // when done: apply shift & set display row to null
+      if (shifting.display.slideProgress === 0) {
+        let csList = getShiftedRow();
+        for (let i = 0; i < csList.length; i++) {
+          cellsMap[shifting.display.row[i]].slices = csList[i];
+        }
+        shifting.display.row = null;
+        if (checkWin()) {
+          levelsSolved[level] = true;
+          gameEnded = true;
+        }
+      }
+    }
+
+    // timer
+    if (!gameEnded) {
+      timeElapsed = Date.now() - startTime;
+    }
+    textSize(36);
+    let minute = floor(timeElapsed / 60000);
+    let sec = floor((timeElapsed % 60000) / 1000) + "";
+    if (sec.length === 1) {
+      sec = "0" + sec;
+    }
+    fill(250);
+    text("".concat(minute, ":").concat(sec), 540, 60);
+
+    // change level buttons /////// remove
+    strokeWeight(_(1.2));
+    if (level > 0) {
+      noStroke();
+      fill(COLORS.LIGHT);
+      rect(_(10), _(90), _(10), _(10), _(2));
+      stroke(COLORS.BG);
+      line(_(12), _(88), _(8), _(90));
+      line(_(12), _(92), _(8), _(90));
+    }
+    if (level < LEVELS.length - 1) {
+      noStroke();
+      fill(COLORS.LIGHT);
+      rect(_(22), _(90), _(10), _(10), _(2));
+      stroke(COLORS.BG);
+      line(_(20), _(88), _(24), _(90));
+      line(_(20), _(92), _(24), _(90));
+    }
+
+    // level dots //////// remove
+    for (let i = 0; i < ceil(LEVELS.length / 2); i++) {
+      fill(levelsSolved[i * 2] ? COLORS.SLICES[1] : COLORS.LIGHT);
+      if (level === i * 2) {
+        fill(COLORS.SLICES[2]);
+      }
+      circle(_(5), _(35 + i * 4), _(3.5));
+      if (i * 2 + 1 >= LEVELS.length) {
+        break;
+      }
+      fill(levelsSolved[i * 2 + 1] ? COLORS.SLICES[1] : COLORS.LIGHT);
+      if (level === i * 2 + 1) {
+        fill(COLORS.SLICES[2]);
+      }
+      circle(60, _(35 + i * 4), _(3.5));
+    }
+  }
+
+  // TITLE SCENE
+  else if (scene === "TITLE") {
     colorMode(HSB);
     strokeWeight(12);
     for (var i = 0; i < width / 8; i++) {
       stroke((frameCount * 1.5 + i * 2) % 360, 180, 255);
       line(i * 16, 0, i * 16 - width, width);
     }
-
     colorMode(RGB);
     image(titleImg, 300, 300, 600);
+    titleButton.render();
+  }
+
+  // MENU SCENE
+  else if (scene === "MENU") {
+    background(COLORS.BG);
     fill(255);
     textSize(24);
     noStroke();
-    text("Click to continue", 300, 570);
-    return;
-  }
-
-  background(COLORS.BG);
-  // goal image
-  image(goalImg, 84, 90, 156, 156);
-
-  // checkmark  /////// will be removed
-  if (levelsSolved[level]) {
-    //////
-  }
-
-  // render cell slices
-  noStroke();
-  for (let i = 0; i < cellKeys.length; i++) {
-    let c = cellsMap[cellKeys[i]];
-    let cc = c.corners;
-
-    for (let s = 0; s < c.slices.length; s++) {
-      fill(COLORS.SLICES[c.slices[s]]);
-      triangle(
-        c.center[0],
-        c.center[1],
-        cc[s][0],
-        cc[s][1],
-        cc[nsi(s + 1)][0],
-        cc[nsi(s + 1)][1]
-      );
-    }
-  }
-
-  // render cell outlines
-  strokeWeight(OUTLINE_THICKNESS);
-  stroke(COLORS.BG);
-  noFill();
-  for (let i = 0; i < cellKeys.length; i++) {
-    let cc = cellsMap[cellKeys[i]].corners;
-    quad(
-      cc[0][0],
-      cc[0][1],
-      cc[1][0],
-      cc[1][1],
-      cc[2][0],
-      cc[2][1],
-      cc[3][0],
-      cc[3][1]
-    );
-  }
-
-  // render shifting display
-  if (shifting.display.row !== null) {
-    let sp = shifting.display.slideProgress;
-    let csList = getShiftedRow();
-
-    // for each cell in row
-    for (let i = 0; i < shifting.display.row.length; i++) {
-      let c1 = cellsMap[shifting.display.row[i]];
-      let c2 = cellsMap[shifting.display.row[nsi(i + 1)]];
-      let cc1 = c1.corners;
-      let cc2 = c2.corners;
-      let slices = csList[i];
-      // correct cc: put the last item to the top of list
-      if (i === 1 || i === 2) {
-        // correct cc2
-        cc2 = [cc2[3], cc2[0], cc2[1], cc2[2]];
-      }
-      if (i === 2 || i === 3) {
-        // correct cc1
-        cc1 = [cc1[3], cc1[0], cc1[1], cc1[2]];
-      }
-      if (i === 2 || i === 3) {
-        // correct slices
-        slices = [slices[3], slices[0], slices[1], slices[2]];
-      }
-
-      // 2 points where a slice is cut
-      let cc1Cuts = [
-        [
-          map(sp, 1, 0, cc1[0][0], cc1[3][0]),
-          map(sp, 1, 0, cc1[0][1], cc1[3][1]),
-        ],
-        [
-          map(sp, 0, 1, cc1[0][0], cc1[3][0]),
-          map(sp, 0, 1, cc1[0][1], cc1[3][1]),
-        ],
-      ];
-      let cc2Cuts = [
-        [
-          map(sp, 1, 0, cc2[1][0], cc2[2][0]),
-          map(sp, 1, 0, cc2[1][1], cc2[2][1]),
-        ],
-        [
-          map(sp, 0, 1, cc2[1][0], cc2[2][0]),
-          map(sp, 0, 1, cc2[1][1], cc2[2][1]),
-        ],
-      ];
-
-      // render slices (2 different rendering stages)
-      noStroke();
-      let movingCenter;
-      if (sp < 0.5) {
-        movingCenter = [
-          map(
-            sp + 0.5,
-            0,
-            1,
-            (cc1[1][0] + cc1[2][0]) / 2,
-            (cc1[0][0] + cc1[3][0]) / 2
-          ),
-          map(
-            sp + 0.5,
-            0,
-            1,
-            (cc1[1][1] + cc1[2][1]) / 2,
-            (cc1[0][1] + cc1[3][1]) / 2
-          ),
-        ];
-
-        // back triangle (index 1)
-        fill(COLORS.SLICES[slices[1]]);
-        triangle(
-          map(sp, 1, 0, cc1[0][0], cc1[1][0]),
-          map(sp, 1, 0, cc1[0][1], cc1[1][1]),
-          map(sp, 0, 1, cc1[2][0], cc1[3][0]),
-          map(sp, 0, 1, cc1[2][1], cc1[3][1]),
-          movingCenter[0],
-          movingCenter[1]
-        );
-
-        // side triangles (index 0)
-        fill(COLORS.SLICES[slices[0]]);
-        quad(
-          cc1[0][0],
-          cc1[0][1],
-          map(sp, 1, 0, cc1[0][0], cc1[1][0]),
-          map(sp, 1, 0, cc1[0][1], cc1[1][1]),
-          movingCenter[0],
-          movingCenter[1],
-          cc1Cuts[1][0],
-          cc1Cuts[1][1]
-        );
-        triangle(
-          cc2[1][0],
-          cc2[1][1],
-          map(sp, 1, 0, cc2[0][0], cc2[1][0]),
-          map(sp, 1, 0, cc2[0][1], cc2[1][1]),
-          cc2Cuts[1][0],
-          cc2Cuts[1][1]
-        );
-
-        // side triangles (index 2)
-        fill(COLORS.SLICES[slices[2]]);
-        quad(
-          cc1[3][0],
-          cc1[3][1],
-          map(sp, 0, 1, cc1[2][0], cc1[3][0]),
-          map(sp, 0, 1, cc1[2][1], cc1[3][1]),
-          movingCenter[0],
-          movingCenter[1],
-          cc1Cuts[0][0],
-          cc1Cuts[0][1]
-        );
-        triangle(
-          cc2[2][0],
-          cc2[2][1],
-          map(sp, 0, 1, cc2[2][0], cc2[3][0]),
-          map(sp, 0, 1, cc2[2][1], cc2[3][1]),
-          cc2Cuts[0][0],
-          cc2Cuts[0][1]
-        );
-
-        // front triangle (index 3)
-        fill(COLORS.SLICES[slices[3]]);
-        triangle(
-          cc1Cuts[0][0],
-          cc1Cuts[0][1],
-          cc1Cuts[1][0],
-          cc1Cuts[1][1],
-          movingCenter[0],
-          movingCenter[1]
-        );
-        quad(
-          cc2Cuts[1][0],
-          cc2Cuts[1][1],
-          cc2Cuts[0][0],
-          cc2Cuts[0][1],
-          map(sp, 0, 1, cc2[2][0], cc2[3][0]),
-          map(sp, 0, 1, cc2[2][1], cc2[3][1]),
-          map(sp, 1, 0, cc2[0][0], cc2[1][0]),
-          map(sp, 1, 0, cc2[0][1], cc2[1][1])
-        );
-      } else {
-        movingCenter = [
-          map(
-            sp - 0.5,
-            0,
-            1,
-            (cc2[1][0] + cc2[2][0]) / 2,
-            (cc2[0][0] + cc2[3][0]) / 2
-          ),
-          map(
-            sp - 0.5,
-            0,
-            1,
-            (cc2[1][1] + cc2[2][1]) / 2,
-            (cc2[0][1] + cc2[3][1]) / 2
-          ),
-        ];
-
-        // front triangle (index 3)
-        fill(COLORS.SLICES[slices[3]]);
-        triangle(
-          map(sp, 1, 0, cc2[0][0], cc2[1][0]),
-          map(sp, 1, 0, cc2[0][1], cc2[1][1]),
-          map(sp, 0, 1, cc2[2][0], cc2[3][0]),
-          map(sp, 0, 1, cc2[2][1], cc2[3][1]),
-          movingCenter[0],
-          movingCenter[1]
-        );
-
-        // side triangles (index 0)
-        fill(COLORS.SLICES[slices[0]]);
-        quad(
-          cc2[1][0],
-          cc2[1][1],
-          map(sp, 1, 0, cc2[0][0], cc2[1][0]),
-          map(sp, 1, 0, cc2[0][1], cc2[1][1]),
-          movingCenter[0],
-          movingCenter[1],
-          cc2Cuts[0][0],
-          cc2Cuts[0][1]
-        );
-        triangle(
-          cc1[0][0],
-          cc1[0][1],
-          map(sp, 1, 0, cc1[0][0], cc1[1][0]),
-          map(sp, 1, 0, cc1[0][1], cc1[1][1]),
-          cc1Cuts[0][0],
-          cc1Cuts[0][1]
-        );
-
-        // side triangles (index 2)
-        fill(COLORS.SLICES[slices[2]]);
-        quad(
-          cc2[2][0],
-          cc2[2][1],
-          map(sp, 0, 1, cc2[2][0], cc2[3][0]),
-          map(sp, 0, 1, cc2[2][1], cc2[3][1]),
-          movingCenter[0],
-          movingCenter[1],
-          cc2Cuts[1][0],
-          cc2Cuts[1][1]
-        );
-        triangle(
-          cc1[3][0],
-          cc1[3][1],
-          map(sp, 0, 1, cc1[2][0], cc1[3][0]),
-          map(sp, 0, 1, cc1[2][1], cc1[3][1]),
-          cc1Cuts[1][0],
-          cc1Cuts[1][1]
-        );
-
-        // back triangle (index 1)
-        fill(COLORS.SLICES[slices[1]]);
-        triangle(
-          cc2Cuts[0][0],
-          cc2Cuts[0][1],
-          cc2Cuts[1][0],
-          cc2Cuts[1][1],
-          movingCenter[0],
-          movingCenter[1]
-        );
-        quad(
-          cc1Cuts[0][0],
-          cc1Cuts[0][1],
-          cc1Cuts[1][0],
-          cc1Cuts[1][1],
-          map(sp, 0, 1, cc1[2][0], cc1[3][0]),
-          map(sp, 0, 1, cc1[2][1], cc1[3][1]),
-          map(sp, 1, 0, cc1[0][0], cc1[1][0]),
-          map(sp, 1, 0, cc1[0][1], cc1[1][1])
-        );
-      }
-
-      // render first outline
-      strokeWeight(OUTLINE_THICKNESS);
-      stroke(COLORS.BG);
-      noFill();
-      if (i === 3) {
-        quad(
-          map(sp, 0, 1, cc2[2][0], cc2[3][0]),
-          map(sp, 0, 1, cc2[2][1], cc2[3][1]),
-          map(sp, 1, 0, cc2[0][0], cc2[1][0]),
-          map(sp, 1, 0, cc2[0][1], cc2[1][1]),
-          cc2[1][0],
-          cc2[1][1],
-          cc2[2][0],
-          cc2[2][1]
-        );
-        quad(
-          map(sp, 0, 1, cc1[1][0], cc1[0][0]),
-          map(sp, 0, 1, cc1[1][1], cc1[0][1]),
-          map(sp, 1, 0, cc1[3][0], cc1[2][0]),
-          map(sp, 1, 0, cc1[3][1], cc1[2][1]),
-          cc1[3][0],
-          cc1[3][1],
-          cc1[0][0],
-          cc1[0][1]
-        );
-      } else {
-        beginShape();
-        vertex(
-          map(sp, 0, 1, cc2[2][0], cc2[3][0]),
-          map(sp, 0, 1, cc2[2][1], cc2[3][1])
-        );
-        vertex(
-          map(sp, 1, 0, cc2[0][0], cc2[1][0]),
-          map(sp, 1, 0, cc2[0][1], cc2[1][1])
-        );
-        vertex(cc1[0][0], cc1[0][1]);
-        vertex(
-          map(sp, 0, 1, cc1[1][0], cc1[0][0]),
-          map(sp, 0, 1, cc1[1][1], cc1[0][1])
-        );
-        vertex(
-          map(sp, 1, 0, cc1[3][0], cc1[2][0]),
-          map(sp, 1, 0, cc1[3][1], cc1[2][1])
-        );
-        vertex(cc1[3][0], cc1[3][1]);
-        endShape(CLOSE);
-      }
-    }
-  }
-
-  // shifting update
-  if (shifting.active) {
-    let draggedCell = cellsMap[shifting.cellKey];
-    let rows = draggedCell.rows;
-    let distances = [[], []];
-    const mx = _mouseX + offsetMouse[0];
-    const my = _mouseY + offsetMouse[1];
-    for (let i = 0; i < rows[0].length; i++) {
-      let ckA = rows[0][i];
-      let ckB = rows[1][i];
-      distances[0].push(
-        dist(mx, my, cellsMap[ckA].center[0], cellsMap[ckA].center[1])
-      );
-      distances[1].push(
-        dist(mx, my, cellsMap[ckB].center[0], cellsMap[ckB].center[1])
-      );
-    }
-    let targetSlider = { combinedDist: Infinity }; // {isRowA, indices, combinedDist}
-    for (let i = 0; i < distances[0].length - 1; i++) {
-      if (distances[0][i] + distances[0][i + 1] < targetSlider.combinedDist) {
-        targetSlider = {
-          rowIndex: 0,
-          indices: [i, i + 1],
-          combinedDist: distances[0][i] + distances[0][i + 1],
-        };
-      }
-      if (distances[1][i] + distances[1][i + 1] < targetSlider.combinedDist) {
-        targetSlider = {
-          rowIndex: 1,
-          indices: [i, i + 1],
-          combinedDist: distances[1][i] + distances[1][i + 1],
-        };
-      }
-    }
-
-    let slideProgress = map(
-      distances[targetSlider.rowIndex][targetSlider.indices[0]] -
-        distances[targetSlider.rowIndex][targetSlider.indices[1]],
-      -CELL_SCALE * 2,
-      CELL_SCALE * 2,
-      0,
-      1
-    );
-    slideProgress = constrain(slideProgress, 0, 1);
-    let row = rows[targetSlider.rowIndex];
-    let step = targetSlider.indices[0] - row.indexOf(shifting.cellKey);
-
-    // update shifting display
-    // wrong row?
-    if (shifting.display.row !== row) {
-      // at origin? switch row, else backtrack to origin
-      if (shifting.display.step === 0) {
-        // still need to decrease sp?
-        if (shifting.display.slideProgress > 0) {
-          shifting.display.slideProgress = max(
-            0,
-            shifting.display.slideProgress - SLIDE_SPEED
-          );
-        }
-        // at exact origin? switch row
-        else if (shifting.display.slideProgress === 0) {
-          shifting.display.row = row; // switch row
-          shifting.display.slideProgress = 0;
-        }
-      } else {
-        // is ahead of origin? sp--, else sp++
-        if (shifting.display.step > 0) {
-          shifting.display.slideProgress -= SLIDE_SPEED;
-          if (shifting.display.slideProgress <= 0) {
-            shifting.display.slideProgress = 1;
-            shifting.display.step--;
-          }
-        } else {
-          // opposite of above
-          shifting.display.slideProgress += SLIDE_SPEED;
-          if (shifting.display.slideProgress >= 1) {
-            shifting.display.slideProgress = 0;
-            shifting.display.step++;
-          }
-        }
-      }
-    }
-    // correct row, catch up
-    else {
-      // at target step? match target sp
-      if (shifting.display.step === step) {
-        if (shifting.display.slideProgress < slideProgress) {
-          shifting.display.slideProgress = min(
-            slideProgress,
-            shifting.display.slideProgress + SLIDE_SPEED
-          );
-        } else {
-          shifting.display.slideProgress = max(
-            slideProgress,
-            shifting.display.slideProgress - SLIDE_SPEED
-          );
-        }
-      } else {
-        // is ahead of target? sp--, else sp++
-        if (shifting.display.step > step) {
-          shifting.display.slideProgress -= SLIDE_SPEED;
-          if (shifting.display.slideProgress <= 0) {
-            shifting.display.slideProgress = 1;
-            shifting.display.step--;
-          }
-        } else {
-          shifting.display.slideProgress += SLIDE_SPEED;
-          if (shifting.display.slideProgress >= 1) {
-            shifting.display.slideProgress = 0;
-            shifting.display.step++;
-          }
-        }
-      }
-    }
-  }
-  // shifting.active is false
-  else if (shifting.display.row !== null) {
-    // sp goes towards 1 or 0
-    if (shifting.display.slideProgress > 0.5) {
-      shifting.display.slideProgress += SLIDE_SPEED;
-      if (shifting.display.slideProgress >= 1) {
-        shifting.display.step++;
-        shifting.display.slideProgress = 0;
-      }
-    } else {
-      shifting.display.slideProgress -= SLIDE_SPEED;
-      if (shifting.display.slideProgress <= 0) {
-        shifting.display.slideProgress = 0;
-      }
-    }
-
-    // when done: apply shift & set display row to null
-    if (shifting.display.slideProgress === 0) {
-      let csList = getShiftedRow();
-      for (let i = 0; i < csList.length; i++) {
-        cellsMap[shifting.display.row[i]].slices = csList[i];
-      }
-      shifting.display.row = null;
-      if (checkWin()) {
-        levelsSolved[level] = true;
-        gameEnded = true;
-      }
-    }
-  }
-
-  // timer
-  if (!gameEnded) {
-    timeElapsed = Date.now() - startTime;
-  }
-  textSize(36);
-  let minute = floor(timeElapsed / 60000);
-  let sec = floor((timeElapsed % 60000) / 1000) + "";
-  if (sec.length === 1) {
-    sec = "0" + sec;
-  }
-  fill(250);
-  text("".concat(minute, ":").concat(sec), 540, 60);
-
-  // change level buttons /////// remove
-  strokeWeight(_(1.2));
-  if (level > 0) {
-    noStroke();
-    fill(COLORS.LIGHT);
-    rect(_(10), _(90), _(10), _(10), _(2));
-    stroke(COLORS.BG);
-    line(_(12), _(88), _(8), _(90));
-    line(_(12), _(92), _(8), _(90));
-  }
-  if (level < LEVELS.length - 1) {
-    noStroke();
-    fill(COLORS.LIGHT);
-    rect(_(22), _(90), _(10), _(10), _(2));
-    stroke(COLORS.BG);
-    line(_(20), _(88), _(24), _(90));
-    line(_(20), _(92), _(24), _(90));
-  }
-
-  // level dots //////// remove
-  for (let i = 0; i < ceil(LEVELS.length / 2); i++) {
-    fill(levelsSolved[i * 2] ? COLORS.SLICES[1] : COLORS.LIGHT);
-    if (level === i * 2) {
-      fill(COLORS.SLICES[2]);
-    }
-    circle(_(5), _(35 + i * 4), _(3.5));
-    if (i * 2 + 1 >= LEVELS.length) {
-      break;
-    }
-    fill(levelsSolved[i * 2 + 1] ? COLORS.SLICES[1] : COLORS.LIGHT);
-    if (level === i * 2 + 1) {
-      fill(COLORS.SLICES[2]);
-    }
-    circle(60, _(35 + i * 4), _(3.5));
+    text("MENU", 300, 300);
   }
 
   // transition squares
@@ -1404,7 +1412,6 @@ function draw() {
   }
 }
 let g = 0;
-
 let offsetMouse = [0, 0];
 
 function touchStarted() {
@@ -1414,9 +1421,8 @@ function touchStarted() {
     touchCountdown = 5;
   }
 
-  if (isAtTitle) {
-    isAtTitle = false;
-    loadLevel();
+  if (scene === "TITLE") {
+    if (titleButton.isHovered) titleButton.clicked();
     return;
   }
 
@@ -1460,6 +1466,71 @@ function touchEnded() {
     shifting.active = false;
   }
 }
+
+class BTN {
+  constructor(x, y, w, h, hasBg, customRender, clicked) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
+    this.hasBg = hasBg;
+    this.customRender = customRender;
+    this.clicked = clicked;
+    this.isHovered = false;
+    this.hoverProgress = 0;
+  }
+
+  render() {
+    // frame
+    noFill();
+    stroke(COLORS.LIGHT);
+    strokeWeight(this.hoverProgress * 2);
+    const sizeFactor = this.hoverProgress * 20;
+    rect(this.x, this.y, this.w + sizeFactor, this.h + sizeFactor);
+
+    // bg
+    if (this.hasBg) {
+      noStroke();
+      fill(COLORS.LIGHT);
+      rect(this.x, this.y, this.w, this.h);
+    }
+
+    this.customRender();
+
+    // check hover
+    if (
+      _mouseX < this.x + this.w / 2 &&
+      _mouseX > this.x - this.w / 2 &&
+      _mouseY < this.y + this.h / 2 &&
+      _mouseY > this.y - this.h / 2
+    ) {
+      this.isHovered = true;
+      cursor(HAND);
+      this.hoverProgress = min(1, this.hoverProgress + 0.1);
+    } else {
+      this.isHovered = false;
+      this.hoverProgress = max(0, this.hoverProgress - 0.1);
+    }
+  }
+}
+
+let titleButton = new BTN(
+  300,
+  520,
+  150,
+  50,
+  true,
+  function () {
+    noStroke();
+    fill(COLORS.BG);
+    textSize(28);
+    text("Play", this.x, this.y);
+  },
+  function () {
+    scene = "MENU";
+    setupTransition();
+  }
+);
 
 function mouseOnCell(corners) {
   let p1 = corners[0],
