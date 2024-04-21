@@ -6,7 +6,6 @@ const COLORS = {};
 
 const LEVELS = [
   // [0,1,2,3][24]
-
   // 1
   [
     [2, 2, 2, 2],
@@ -442,6 +441,8 @@ const LEVELS = [
   ],
 ];
 
+const LEVELS_DIFF = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 0, 1, 2, 2];
+
 let levelsSolved = []; // bool[]
 for (let i = 0; i < LEVELS.length; i++) {
   levelsSolved.push(false);
@@ -472,6 +473,151 @@ let shifting = {
     row: null,
   },
 };
+
+class BTN {
+  constructor(x, y, w, h, hasBg, customRender, clicked) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
+    this.hasBg = hasBg;
+    this.customRender = customRender;
+    this.clicked = function () {
+      this.hoverProgress = 0.5;
+      clicked();
+    };
+    this.isHovered = false;
+    this.hoverProgress = 0;
+  }
+
+  render() {
+    // frame
+    noFill();
+    stroke(COLORS.LIGHT);
+    strokeWeight(this.hoverProgress * 2);
+    const sizeFactor = this.hoverProgress * 20;
+    rect(this.x, this.y, this.w + sizeFactor, this.h + sizeFactor);
+
+    // bg
+    if (this.hasBg) {
+      noStroke();
+      fill(COLORS.LIGHT);
+      rect(this.x, this.y, this.w, this.h);
+    }
+
+    this.customRender();
+
+    // check hover
+    if (
+      _mouseX < this.x + this.w / 2 &&
+      _mouseX > this.x - this.w / 2 &&
+      _mouseY < this.y + this.h / 2 &&
+      _mouseY > this.y - this.h / 2
+    ) {
+      this.isHovered = true;
+      cursor(HAND);
+      this.hoverProgress = min(1, this.hoverProgress + 0.1);
+    } else {
+      this.isHovered = false;
+      this.hoverProgress = max(0, this.hoverProgress - 0.1);
+    }
+  }
+}
+
+let allGoalImages = [];
+
+const MENU_LV_BTN_DELAY = -0.5;
+const LBPOS = [
+  [185, 120],
+  [415, 120],
+  [185, 350],
+  [415, 350],
+];
+// {btn, animateProgress (0 to 1), levelData {goalImg, bestTime, difficulty} }
+const levelButtons = [];
+LBPOS.forEach(function (pos, i) {
+  levelButtons[i] = {
+    animateProgress: 0, // 0 to 1 only
+    levelData: null,
+    difficulty: 0, // 0, 1, 2
+    btn: new BTN(
+      pos[0],
+      pos[1],
+      180,
+      180,
+      false,
+      function () {
+        const lvbtn = levelButtons[i];
+        lvbtn.animateProgress = min(1, lvbtn.animateProgress + 0.1);
+        if (lvbtn.animateProgress < 0) return;
+        if (lvbtn.levelData === null) {
+          const lvIndex = i + menuPageIndex * 4;
+          lvbtn.levelData = {
+            goalImg: getGoalImg(lvIndex),
+            difficulty: LEVELS_DIFF[lvIndex],
+            ///
+            bestTime: null,
+          };
+        } else {
+          image(
+            lvbtn.levelData.goalImg,
+            this.x,
+            this.y,
+            this.w * lvbtn.animateProgress,
+            this.h
+          );
+        }
+      },
+      function () {
+        print(levelButtons[i].levelData);
+      }
+    ),
+  };
+});
+
+let menuPageIndex;
+let menuLeftBtn = new BTN(
+  150,
+  550,
+  100,
+  50,
+  true,
+  function () {
+    stroke(COLORS.BG);
+    strokeWeight(5);
+    line(this.x + 10, this.y - 10, this.x - 10, this.y);
+    line(this.x - 10, this.y, this.x + 10, this.y + 10);
+  },
+  function () {
+    refreshMenu(max(0, menuPageIndex - 1));
+  }
+);
+let menuRightBtn = new BTN(
+  450,
+  550,
+  100,
+  50,
+  true,
+  function () {
+    stroke(COLORS.BG);
+    strokeWeight(5);
+    line(this.x - 10, this.y - 10, this.x + 10, this.y);
+    line(this.x + 10, this.y, this.x - 10, this.y + 10);
+  },
+  function () {
+    refreshMenu(min(ceil(LEVELS.length / 4) - 1, menuPageIndex + 1));
+  }
+);
+
+function refreshMenu(mpi) {
+  if (mpi === menuPageIndex) return; // no change
+  menuPageIndex = mpi;
+
+  levelButtons.forEach((lvbtn, i) => {
+    lvbtn.levelData = null;
+    lvbtn.animateProgress = MENU_LV_BTN_DELAY * i;
+  });
+}
 
 function getShiftedRow() {
   let csList = [];
@@ -534,27 +680,22 @@ function getShiftedRow() {
   return csList;
 }
 
-function loadLevel() {
-  setupTransition();
-  startTime = Date.now();
-  timeElapsed = 0;
-  gameEnded = false;
-
+function getGoalImg(lvIndex) {
   // set slices data to all cells
   for (let i = 0; i < cellKeys.length; i++) {
-    cellsMap[cellKeys[i]].slices = LEVELS[level][i].slice(0);
+    cellsMap[cellKeys[i]].slices = LEVELS[lvIndex][i].slice(0);
   }
 
   // get goal image
-  background(COLORS.BG);
-  noStroke();
+  const grph = createGraphics(600, 600, P2D);
+  grph.noStroke();
   for (let i = 0; i < cellKeys.length; i++) {
     let c = cellsMap[cellKeys[i]];
     let cc = c.corners;
 
     for (let s = 0; s < c.slices.length; s++) {
-      fill(COLORS.SLICES[c.slices[s]]);
-      triangle(
+      grph.fill(COLORS.SLICES[c.slices[s]]);
+      grph.triangle(
         c.center[0],
         c.center[1],
         cc[s][0],
@@ -564,12 +705,21 @@ function loadLevel() {
       );
     }
   }
-  goalImg = get(
+  return grph.get(
     BO[0] - CELL_SCALE,
     BO[1] - CELL_SCALE,
     CELL_SCALE * 2,
     CELL_SCALE * 2
   );
+}
+
+function loadLevel() {
+  setupTransition();
+  startTime = Date.now();
+  timeElapsed = 0;
+  gameEnded = false;
+
+  goalImage = getGoalImg(level);
 
   // shuffle while isn't shuffled
   let safeBreak = 0;
@@ -647,8 +797,6 @@ function setup() {
     color(18, 227, 223), // teal
     color(210, 100, 255), // purple
   ];
-
-  makeTitle();
 
   // set up points
   let boardCenter = [BO[0], BO[1]];
@@ -779,8 +927,7 @@ function setup() {
   }
 }
 
-function makeTitle() {
-  clear();
+function drawTitle() {
   noFill();
   stroke(255);
   strokeWeight(6);
@@ -814,26 +961,6 @@ function makeTitle() {
   // T
   quad(444, 250, 528, 250, 520.2, 274, 436.2, 274);
   quad(490.2, 274, 466.2, 274, 414, 430, 438, 430);
-
-  let msk = get();
-  msk.loadPixels(); // Load pixel data
-  // Iterate through each pixel
-  for (let x = 0; x < msk.width; x++) {
-    for (let y = 0; y < msk.height; y++) {
-      let index = (x + y * msk.width) * 4; // Calculate pixel index
-      if (msk.pixels[index + 3] === 255) {
-        msk.pixels[index + 3] = 0;
-      } else {
-        msk.pixels[index] = COLORS.BG;
-        msk.pixels[index + 1] = COLORS.BG;
-        msk.pixels[index + 2] = COLORS.BG;
-        msk.pixels[index + 3] = 255;
-      }
-    }
-  }
-  msk.updatePixels(); // Update image with modified pixels
-  titleImg = msk;
-  background(COLORS.BG);
 }
 
 let touchCountdown = 0;
@@ -1372,24 +1499,26 @@ function draw() {
 
   // TITLE SCENE
   else if (scene === "TITLE") {
-    colorMode(HSB);
-    strokeWeight(12);
-    for (var i = 0; i < width / 8; i++) {
-      stroke((frameCount * 1.5 + i * 2) % 360, 180, 255);
-      line(i * 16, 0, i * 16 - width, width);
-    }
-    colorMode(RGB);
-    image(titleImg, 300, 300, 600);
+    clear();
+    drawTitle();
     titleButton.render();
   }
 
   // MENU SCENE
   else if (scene === "MENU") {
-    background(COLORS.BG);
-    fill(255);
-    textSize(24);
+    clear();
+
+    // render lv buttons
+    for (let i = 0; i < levelButtons.length; i++) {
+      levelButtons[i].btn.render();
+    }
+
+    // page buttons
+    menuLeftBtn.render();
+    menuRightBtn.render();
     noStroke();
-    text("MENU", 300, 300);
+    textSize(32);
+    text(menuPageIndex + 1 + "/" + ceil(LEVELS.length / 4), 300, 550);
   }
 
   // transition squares
@@ -1425,6 +1554,17 @@ function touchStarted() {
     if (titleButton.isHovered) titleButton.clicked();
     return;
   }
+  if (scene === "MENU") {
+    if (menuLeftBtn.isHovered) menuLeftBtn.clicked();
+    else if (menuRightBtn.isHovered) menuRightBtn.clicked();
+
+    for (let i = 0; i < levelButtons.length; i++) {
+      const btn = levelButtons[i].btn;
+      if (btn.isHovered) return btn.clicked();
+    }
+
+    return;
+  }
 
   // start shifting
   if (!shifting.active && shifting.display.row === null) {
@@ -1444,72 +1584,12 @@ function touchStarted() {
       }
     }
   }
-
-  // button clicked
-  if (_mouseY > _(90 - 5) && _mouseY < _(90 + 5)) {
-    if (_mouseX > _(10 - 5) && _mouseX < _(10 + 5)) {
-      if (level > 0) {
-        level--;
-        loadLevel();
-      }
-    } else if (_mouseX > _(22 - 5) && _mouseX < _(22 + 5)) {
-      if (level < LEVELS.length - 1) {
-        level++;
-        loadLevel();
-      }
-    }
-  }
 }
 function touchEnded() {
-  // stop shifting
-  if (shifting.active) {
-    shifting.active = false;
-  }
-}
-
-class BTN {
-  constructor(x, y, w, h, hasBg, customRender, clicked) {
-    this.x = x;
-    this.y = y;
-    this.w = w;
-    this.h = h;
-    this.hasBg = hasBg;
-    this.customRender = customRender;
-    this.clicked = clicked;
-    this.isHovered = false;
-    this.hoverProgress = 0;
-  }
-
-  render() {
-    // frame
-    noFill();
-    stroke(COLORS.LIGHT);
-    strokeWeight(this.hoverProgress * 2);
-    const sizeFactor = this.hoverProgress * 20;
-    rect(this.x, this.y, this.w + sizeFactor, this.h + sizeFactor);
-
-    // bg
-    if (this.hasBg) {
-      noStroke();
-      fill(COLORS.LIGHT);
-      rect(this.x, this.y, this.w, this.h);
-    }
-
-    this.customRender();
-
-    // check hover
-    if (
-      _mouseX < this.x + this.w / 2 &&
-      _mouseX > this.x - this.w / 2 &&
-      _mouseY < this.y + this.h / 2 &&
-      _mouseY > this.y - this.h / 2
-    ) {
-      this.isHovered = true;
-      cursor(HAND);
-      this.hoverProgress = min(1, this.hoverProgress + 0.1);
-    } else {
-      this.isHovered = false;
-      this.hoverProgress = max(0, this.hoverProgress - 0.1);
+  if (scene === "PLAY") {
+    // stop shifting
+    if (shifting.active) {
+      shifting.active = false;
     }
   }
 }
@@ -1528,6 +1608,7 @@ let titleButton = new BTN(
   },
   function () {
     scene = "MENU";
+    refreshMenu(0);
     setupTransition();
   }
 );
