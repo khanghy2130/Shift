@@ -1,4 +1,4 @@
-const CELL_SCALE = 250;
+const CELL_SCALE = 260;
 const OUTLINE_THICKNESS = 4;
 const BO = [348, 300]; // BOARD OFFSET
 const SLIDE_SPEED = 0.08;
@@ -1365,8 +1365,8 @@ function draw() {
       let slideProgress = map(
         distances[targetSlider.rowIndex][targetSlider.indices[0]] -
           distances[targetSlider.rowIndex][targetSlider.indices[1]],
-        -CELL_SCALE * 2,
-        CELL_SCALE * 2,
+        -CELL_SCALE / 3,
+        CELL_SCALE / 3,
         0,
         1
       );
