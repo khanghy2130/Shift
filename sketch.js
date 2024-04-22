@@ -441,11 +441,11 @@ const LEVELS = [
   ],
 ];
 
-const LEVELS_DIFF = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 0, 1, 2, 2];
+const LEVELS_DIFF = [0, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 2, 2, 2];
 
-let levelsSolved = []; // bool[]
+let bestTimes = [];
 for (let i = 0; i < LEVELS.length; i++) {
-  levelsSolved.push(false);
+  bestTimes.push(null);
 }
 
 let goalImg;
@@ -454,7 +454,7 @@ let scene = "TITLE"; // TITLE, MENU, PLAY
 let titleImg;
 
 let level = 0;
-let goalImage = null;
+let playIntroProgress = 0;
 
 let cellsMap = {}; // key: planeNum + "," + cellNum
 let cellKeys = [];
@@ -475,12 +475,12 @@ let shifting = {
 };
 
 class BTN {
-  constructor(x, y, w, h, hasBg, customRender, clicked) {
+  constructor(x, y, w, h, customRender, clicked, noBg) {
     this.x = x;
     this.y = y;
     this.w = w;
     this.h = h;
-    this.hasBg = hasBg;
+    this.noBg = noBg;
     this.customRender = customRender;
     this.clicked = function () {
       this.hoverProgress = 0.5;
@@ -498,13 +498,11 @@ class BTN {
     const sizeFactor = this.hoverProgress * 20;
     rect(this.x, this.y, this.w + sizeFactor, this.h + sizeFactor);
 
-    // bg
-    if (this.hasBg) {
-      noStroke();
-      fill(COLORS.LIGHT);
+    // static border
+    if (!this.noBg) {
+      strokeWeight(2);
       rect(this.x, this.y, this.w, this.h);
     }
-
     this.customRender();
 
     // check hover
@@ -523,8 +521,6 @@ class BTN {
     }
   }
 }
-
-let allGoalImages = [];
 
 const MENU_LV_BTN_DELAY = -0.5;
 const LBPOS = [
@@ -545,7 +541,6 @@ LBPOS.forEach(function (pos, i) {
       pos[1],
       180,
       180,
-      false,
       function () {
         const lvbtn = levelButtons[i];
         lvbtn.animateProgress = min(1, lvbtn.animateProgress + 0.1);
@@ -555,8 +550,7 @@ LBPOS.forEach(function (pos, i) {
           lvbtn.levelData = {
             goalImg: getGoalImg(lvIndex),
             difficulty: LEVELS_DIFF[lvIndex],
-            ///
-            bestTime: null,
+            bestTime: bestTimes[lvIndex],
           };
         } else {
           image(
@@ -566,11 +560,53 @@ LBPOS.forEach(function (pos, i) {
             this.w * lvbtn.animateProgress,
             this.h
           );
+
+          // render difficulty
+          noStroke();
+          let c, t;
+          if (lvbtn.levelData.difficulty === 0) {
+            c = color(0, 255, 0);
+            t = "easy";
+          } else if (lvbtn.levelData.difficulty === 1) {
+            c = color(255, 255, 0);
+            t = "medium";
+          } else if (lvbtn.levelData.difficulty === 2) {
+            c = color(255, 100, 100);
+            t = "hard";
+          }
+          fill(c);
+          textSize(18 * lvbtn.animateProgress);
+          text(t, this.x - 70, this.y - 70);
+
+          // render best time
+          if (lvbtn.levelData.bestTime) {
+            let minute = floor(lvbtn.levelData.bestTime / 60000);
+            let sec = floor((lvbtn.levelData.bestTime % 60000) / 1000) + "";
+            if (sec.length === 1) {
+              sec = "0" + sec;
+            }
+            push();
+            translate(this.x, this.y);
+            rotate(-20 * lvbtn.animateProgress);
+            fill(255);
+            rect(0, 0, 120 * lvbtn.animateProgress, 40 * lvbtn.animateProgress);
+            fill(COLORS.BG);
+            textSize(32 * lvbtn.animateProgress);
+            text("".concat(minute, ":").concat(sec), 0, 0);
+            pop();
+          }
         }
       },
       function () {
-        print(levelButtons[i].levelData);
-      }
+        const lvData = levelButtons[i].levelData;
+        if (lvData) {
+          level = i + menuPageIndex * 4;
+          loadLevel();
+          setupTransition();
+          scene = "PLAY";
+        }
+      },
+      true
     ),
   };
 });
@@ -581,9 +617,8 @@ let menuLeftBtn = new BTN(
   550,
   100,
   50,
-  true,
   function () {
-    stroke(COLORS.BG);
+    stroke(COLORS.LIGHT);
     strokeWeight(5);
     line(this.x + 10, this.y - 10, this.x - 10, this.y);
     line(this.x - 10, this.y, this.x + 10, this.y + 10);
@@ -597,9 +632,8 @@ let menuRightBtn = new BTN(
   550,
   100,
   50,
-  true,
   function () {
-    stroke(COLORS.BG);
+    stroke(COLORS.LIGHT);
     strokeWeight(5);
     line(this.x - 10, this.y - 10, this.x + 10, this.y);
     line(this.x + 10, this.y, this.x - 10, this.y + 10);
@@ -715,11 +749,11 @@ function getGoalImg(lvIndex) {
 
 function loadLevel() {
   setupTransition();
+  playIntroProgress = 0;
   startTime = Date.now();
   timeElapsed = 0;
   gameEnded = false;
-
-  goalImage = getGoalImg(level);
+  goalImg = getGoalImg(level);
 
   // shuffle while isn't shuffled
   let safeBreak = 0;
@@ -799,7 +833,6 @@ function setup() {
   ];
 
   // set up points
-  let boardCenter = [BO[0], BO[1]];
   let hexCorners = []; // 6 starting with top
   for (let i = 0; i < 6; i++) {
     hexCorners.push([
@@ -831,10 +864,7 @@ function setup() {
   let innerMidPoints = []; // between center and midHexPoint
   for (let i = 0; i < 6; i++) {
     let midPoint = midHexPoints[i];
-    innerMidPoints.push([
-      (midPoint[0] + boardCenter[0]) / 2,
-      (midPoint[1] + boardCenter[1]) / 2,
-    ]);
+    innerMidPoints.push([(midPoint[0] + BO[0]) / 2, (midPoint[1] + BO[1]) / 2]);
   }
   let outerMidPoints = []; // between midmidPoint1 and innerMidPoint
   for (let i = 0; i < 6; i++) {
@@ -850,7 +880,7 @@ function setup() {
       switch (cellNum) {
         case 0:
           cellCorners = [
-            boardCenter,
+            BO,
             innerMidPoints[nhi(planeNum - 1)],
             outerMidPoints[planeNum],
             innerMidPoints[planeNum],
@@ -974,11 +1004,6 @@ function draw() {
     background(COLORS.BG);
     // goal image
     image(goalImg, 84, 90, 156, 156);
-
-    // checkmark  /////// will be removed
-    if (levelsSolved[level]) {
-      //////
-    }
 
     // render cell slices
     noStroke();
@@ -1440,9 +1465,10 @@ function draw() {
           cellsMap[shifting.display.row[i]].slices = csList[i];
         }
         shifting.display.row = null;
-        if (checkWin()) {
-          levelsSolved[level] = true;
+        if (!gameEnded && checkWin()) {
           gameEnded = true;
+          bestTimes[level] = timeElapsed;
+          print("win at " + timeElapsed); ///
         }
       }
     }
@@ -1459,42 +1485,6 @@ function draw() {
     }
     fill(250);
     text("".concat(minute, ":").concat(sec), 540, 60);
-
-    // change level buttons /////// remove
-    strokeWeight(_(1.2));
-    if (level > 0) {
-      noStroke();
-      fill(COLORS.LIGHT);
-      rect(_(10), _(90), _(10), _(10), _(2));
-      stroke(COLORS.BG);
-      line(_(12), _(88), _(8), _(90));
-      line(_(12), _(92), _(8), _(90));
-    }
-    if (level < LEVELS.length - 1) {
-      noStroke();
-      fill(COLORS.LIGHT);
-      rect(_(22), _(90), _(10), _(10), _(2));
-      stroke(COLORS.BG);
-      line(_(20), _(88), _(24), _(90));
-      line(_(20), _(92), _(24), _(90));
-    }
-
-    // level dots //////// remove
-    for (let i = 0; i < ceil(LEVELS.length / 2); i++) {
-      fill(levelsSolved[i * 2] ? COLORS.SLICES[1] : COLORS.LIGHT);
-      if (level === i * 2) {
-        fill(COLORS.SLICES[2]);
-      }
-      circle(_(5), _(35 + i * 4), _(3.5));
-      if (i * 2 + 1 >= LEVELS.length) {
-        break;
-      }
-      fill(levelsSolved[i * 2 + 1] ? COLORS.SLICES[1] : COLORS.LIGHT);
-      if (level === i * 2 + 1) {
-        fill(COLORS.SLICES[2]);
-      }
-      circle(60, _(35 + i * 4), _(3.5));
-    }
   }
 
   // TITLE SCENE
@@ -1516,6 +1506,7 @@ function draw() {
     // page buttons
     menuLeftBtn.render();
     menuRightBtn.render();
+    fill(COLORS.LIGHT);
     noStroke();
     textSize(32);
     text(menuPageIndex + 1 + "/" + ceil(LEVELS.length / 4), 300, 550);
@@ -1599,10 +1590,9 @@ let titleButton = new BTN(
   520,
   150,
   50,
-  true,
   function () {
     noStroke();
-    fill(COLORS.BG);
+    fill(COLORS.LIGHT);
     textSize(28);
     text("Play", this.x, this.y);
   },
@@ -1663,4 +1653,19 @@ function randomInt(start, end) {
 }
 function getRandomItem(arr) {
   return arr[randomInt(0, arr.length)];
+}
+
+function easeOutBounce(x) {
+  const n1 = 7.5625;
+  const d1 = 2.75;
+
+  if (x < 1 / d1) {
+    return n1 * x * x;
+  } else if (x < 2 / d1) {
+    return n1 * (x -= 1.5 / d1) * x + 0.75;
+  } else if (x < 2.5 / d1) {
+    return n1 * (x -= 2.25 / d1) * x + 0.9375;
+  } else {
+    return n1 * (x -= 2.625 / d1) * x + 0.984375;
+  }
 }
