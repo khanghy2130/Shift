@@ -1,6 +1,6 @@
 const CELL_SCALE = 260;
 const OUTLINE_THICKNESS = 4;
-const BO = [348, 300]; // BOARD OFFSET
+const BO = [360, 300]; // BOARD OFFSET
 const SLIDE_SPEED = 0.08;
 const COLORS = {};
 
@@ -455,6 +455,12 @@ let titleImg;
 
 let level = 0;
 let playIntroProgress = 0;
+const WIN_TEXT = "COMPLETED".split("").map(function (le, i) {
+  return {
+    char: le,
+    progress: 0,
+  };
+});
 
 let cellsMap = {}; // key: planeNum + "," + cellNum
 let cellKeys = [];
@@ -588,23 +594,20 @@ LBPOS.forEach(function (pos, i) {
             push();
             translate(this.x, this.y);
             rotate(-20 * lvbtn.animateProgress);
-            fill(255);
-            rect(0, 0, 120 * lvbtn.animateProgress, 40 * lvbtn.animateProgress);
             fill(COLORS.BG);
+            rect(0, 0, 120 * lvbtn.animateProgress, 40 * lvbtn.animateProgress);
+            fill(COLORS.LIGHT);
             textSize(32 * lvbtn.animateProgress);
-            text("".concat(minute, ":").concat(sec), 0, 0);
+            text(`${minute}:${sec}`, 0, 0);
             pop();
           }
         }
       },
       function () {
-        const lvData = levelButtons[i].levelData;
-        if (lvData) {
-          level = i + menuPageIndex * 4;
-          loadLevel();
-          setupTransition();
-          scene = "PLAY";
-        }
+        level = i + menuPageIndex * 4;
+        loadLevel();
+        setupTransition();
+        scene = "PLAY";
       },
       true
     ),
@@ -624,7 +627,8 @@ let menuLeftBtn = new BTN(
     line(this.x - 10, this.y, this.x + 10, this.y + 10);
   },
   function () {
-    refreshMenu(max(0, menuPageIndex - 1));
+    if (menuPageIndex <= 0) return;
+    refreshMenu(menuPageIndex - 1);
   }
 );
 let menuRightBtn = new BTN(
@@ -639,17 +643,36 @@ let menuRightBtn = new BTN(
     line(this.x + 10, this.y, this.x - 10, this.y + 10);
   },
   function () {
-    refreshMenu(min(ceil(LEVELS.length / 4) - 1, menuPageIndex + 1));
+    if (menuPageIndex >= ceil(LEVELS.length / 4) - 1) return;
+    refreshMenu(menuPageIndex + 1);
+  }
+);
+
+let exitBtn = new BTN(
+  100,
+  520,
+  120,
+  40,
+  function () {
+    noStroke();
+    textSize(24);
+    fill(COLORS.LIGHT);
+    text("Menu", this.x, this.y);
+  },
+  function () {
+    scene = "MENU";
+    refreshMenu(menuPageIndex);
+    setupTransition();
   }
 );
 
 function refreshMenu(mpi) {
-  if (mpi === menuPageIndex) return; // no change
   menuPageIndex = mpi;
 
   levelButtons.forEach((lvbtn, i) => {
     lvbtn.levelData = null;
     lvbtn.animateProgress = MENU_LV_BTN_DELAY * i;
+    lvbtn.btn.hoverProgress = 0;
   });
 }
 
@@ -749,6 +772,7 @@ function getGoalImg(lvIndex) {
 
 function loadLevel() {
   setupTransition();
+  isNewBest = false;
   playIntroProgress = 0;
   startTime = Date.now();
   timeElapsed = 0;
@@ -799,6 +823,20 @@ function setupTransition() {
       });
     }
   }
+}
+
+let isNewBest = false;
+function triggerWin() {
+  gameEnded = true;
+  const prevBestTime = bestTimes[level];
+  if (!prevBestTime || prevBestTime > timeElapsed) {
+    isNewBest = true;
+    bestTimes[level] = timeElapsed;
+  }
+  // set letters progress
+  WIN_TEXT.forEach((obj, i) => {
+    obj.progress = i * -0.05;
+  });
 }
 
 function windowResized() {
@@ -1001,9 +1039,13 @@ function draw() {
   _mouseY = floor(mouseY / scaleFactor);
   touchCountdown--;
   if (scene === "PLAY") {
-    background(COLORS.BG);
+    playIntroProgress = min(1, playIntroProgress + 0.05);
+    clear();
     // goal image
-    image(goalImg, 84, 90, 156, 156);
+    image(goalImg, 90, 95, 180 * playIntroProgress, 180 * playIntroProgress);
+
+    push();
+    translate(0, 600 - 600 * playIntroProgress);
 
     // render cell slices
     noStroke();
@@ -1041,6 +1083,8 @@ function draw() {
         cc[3][1]
       );
     }
+
+    pop();
 
     // render shifting display
     if (shifting.display.row !== null) {
@@ -1466,12 +1510,12 @@ function draw() {
         }
         shifting.display.row = null;
         if (!gameEnded && checkWin()) {
-          gameEnded = true;
-          bestTimes[level] = timeElapsed;
-          print("win at " + timeElapsed); ///
+          triggerWin();
         }
       }
     }
+
+    exitBtn.render();
 
     // timer
     if (!gameEnded) {
@@ -1483,8 +1527,34 @@ function draw() {
     if (sec.length === 1) {
       sec = "0" + sec;
     }
-    fill(250);
-    text("".concat(minute, ":").concat(sec), 540, 60);
+    fill(COLORS.LIGHT);
+    text(`${minute}:${sec}`, 535, 50);
+    // flash new best text
+    if (isNewBest) {
+      textSize(24);
+      fill(255, 255, 0, 125 + cos(frameCount * 6) * 125);
+      text("NEW BEST!", 535, 80);
+    }
+
+    // win animation
+    if (gameEnded) {
+      stroke(COLORS.BG);
+      strokeWeight(10);
+      fill(COLORS.LIGHT);
+      textSize(60);
+      const defaultY = BO[1] - 100;
+      for (let i = 0; i < WIN_TEXT.length; i++) {
+        let n = WIN_TEXT[i];
+        const f = easeOutBounce(constrain(n.progress, 0, 1));
+        let yValue = defaultY + 100 * f;
+
+        if (f > 0) {
+          text(n.char, BO[0] + (i - 4) * 40, yValue);
+        }
+
+        n.progress += 0.015;
+      }
+    }
   }
 
   // TITLE SCENE
@@ -1513,7 +1583,7 @@ function draw() {
   }
 
   // transition squares
-  g = min(1, g + 0.01);
+  g = min(1, g + 0.012);
   for (let i = transitionSquares.length - 1; i >= 0; i--) {
     let ts = transitionSquares[i];
     if (ts.pos[1] > 720) {
@@ -1556,6 +1626,14 @@ function touchStarted() {
 
     return;
   }
+
+  // exit button
+  if (exitBtn.isHovered) {
+    exitBtn.clicked();
+    return;
+  }
+
+  if (gameEnded) return; // already won
 
   // start shifting
   if (!shifting.active && shifting.display.row === null) {
