@@ -441,7 +441,7 @@ const LEVELS = [
   ],
 ];
 
-const LEVELS_DIFF = [0, 0, 0, 0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 2, 2, 2];
+const LEVELS_DIFF = [0, 0, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1, 2, 2, 2];
 
 let bestTimes = [];
 for (let i = 0; i < LEVELS.length; i++) {
@@ -1611,6 +1611,33 @@ function touchStarted() {
     touchCountdown = 5;
   }
 
+  if (scene === "PLAY") {
+    if (gameEnded) return; // already won
+
+    // start shifting
+    if (!shifting.active && shifting.display.row === null) {
+      // assign again to fix mobile
+      _mouseX = floor(mouseX / scaleFactor);
+      _mouseY = floor(mouseY / scaleFactor);
+      // find clicked cell
+      for (let i = 0; i < cellKeys.length; i++) {
+        if (mouseOnCell(cellsMap[cellKeys[i]].corners)) {
+          shifting.cellKey = cellKeys[i];
+          shifting.active = true;
+          shifting.display.row = cellsMap[cellKeys[i]].rows[0];
+          shifting.display.slideProgress = 0;
+          shifting.display.step = 0;
+          offsetMouse = [
+            cellsMap[cellKeys[i]].center[0] - _mouseX,
+            cellsMap[cellKeys[i]].center[1] - _mouseY,
+          ];
+          return;
+        }
+      }
+    }
+  }
+}
+function touchEnded() {
   if (scene === "TITLE") {
     if (titleButton.isHovered) titleButton.clicked();
     return;
@@ -1627,38 +1654,15 @@ function touchStarted() {
     return;
   }
 
-  // exit button
-  if (exitBtn.isHovered) {
-    exitBtn.clicked();
-    return;
-  }
-
-  if (gameEnded) return; // already won
-
-  // start shifting
-  if (!shifting.active && shifting.display.row === null) {
-    // find clicked cell
-    for (let i = 0; i < cellKeys.length; i++) {
-      if (mouseOnCell(cellsMap[cellKeys[i]].corners)) {
-        shifting.cellKey = cellKeys[i];
-        shifting.active = true;
-        shifting.display.row = cellsMap[cellKeys[i]].rows[0];
-        shifting.display.slideProgress = 0;
-        shifting.display.step = 0;
-        offsetMouse = [
-          cellsMap[cellKeys[i]].center[0] - _mouseX,
-          cellsMap[cellKeys[i]].center[1] - _mouseY,
-        ];
-        return;
-      }
-    }
-  }
-}
-function touchEnded() {
   if (scene === "PLAY") {
     // stop shifting
     if (shifting.active) {
       shifting.active = false;
+    }
+    // exit button
+    if (exitBtn.isHovered) {
+      exitBtn.clicked();
+      return;
     }
   }
 }
