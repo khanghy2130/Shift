@@ -490,6 +490,7 @@ class BTN {
     this.customRender = customRender;
     this.clicked = function () {
       this.hoverProgress = 0.5;
+      sounds.click.play();
       clicked();
     };
     this.isHovered = false;
@@ -770,6 +771,11 @@ function getGoalImg(lvIndex) {
   );
 }
 
+function dragSound() {
+  sounds.drag.stop();
+  sounds.drag.play();
+}
+
 function loadLevel() {
   setupTransition();
   isNewBest = false;
@@ -827,6 +833,7 @@ function setupTransition() {
 
 let isNewBest = false;
 function triggerWin() {
+  sounds.win.play();
   gameEnded = true;
   const prevBestTime = bestTimes[level];
   if (!prevBestTime || prevBestTime > timeElapsed) {
@@ -837,6 +844,15 @@ function triggerWin() {
   WIN_TEXT.forEach((obj, i) => {
     obj.progress = i * -0.05;
   });
+}
+
+let sounds = {};
+function preload() {
+  sounds = {
+    click: loadSound("click.mp3"),
+    win: loadSound("win.mp3"),
+    drag: loadSound("drag.mp3"),
+  };
 }
 
 function windowResized() {
@@ -851,6 +867,8 @@ function setup() {
   canvas = createCanvas(600, 600, document.getElementById("game-canvas"));
   stopTouchScrolling(document.getElementById("game-canvas"));
   windowResized();
+
+  sounds.win.setVolume(0.5);
 
   textFont("monospace");
   pixelDensity(1);
@@ -1443,6 +1461,7 @@ function draw() {
             if (shifting.display.slideProgress <= 0) {
               shifting.display.slideProgress = 1;
               shifting.display.step--;
+              dragSound();
             }
           } else {
             // opposite of above
@@ -1450,6 +1469,7 @@ function draw() {
             if (shifting.display.slideProgress >= 1) {
               shifting.display.slideProgress = 0;
               shifting.display.step++;
+              dragSound();
             }
           }
         }
@@ -1476,12 +1496,14 @@ function draw() {
             if (shifting.display.slideProgress <= 0) {
               shifting.display.slideProgress = 1;
               shifting.display.step--;
+              dragSound();
             }
           } else {
             shifting.display.slideProgress += SLIDE_SPEED;
             if (shifting.display.slideProgress >= 1) {
               shifting.display.slideProgress = 0;
               shifting.display.step++;
+              dragSound();
             }
           }
         }
@@ -1494,6 +1516,7 @@ function draw() {
         shifting.display.slideProgress += SLIDE_SPEED;
         if (shifting.display.slideProgress >= 1) {
           shifting.display.step++;
+          dragSound();
           shifting.display.slideProgress = 0;
         }
       } else {
@@ -1563,6 +1586,10 @@ function draw() {
     clear();
     drawTitle();
     titleButton.render();
+    noStroke();
+    fill(COLORS.LIGHT);
+    textSize(12);
+    text("Sounds from ZapSplat", 500, 20);
   }
 
   // MENU SCENE
