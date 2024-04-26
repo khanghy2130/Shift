@@ -878,7 +878,22 @@ function sendNewTotalScore() {
     if (t === null) return;
     newTotalScore += Math.max(0, 1000000 - t);
   });
-  print(newTotalScore);
+  console.log("New total score: " + newTotalScore);
+  $.ajax({
+    type: "POST",
+    url: "https://www.centarius.app/enter-leaderboard/",
+    data: {
+      game_id: window.CENTARIUS_GAME_ID,
+      userID: uuid,
+      score: newTotalScore,
+    },
+    success: function (response) {
+      console.log(response);
+    },
+    error: function (error) {
+      console.log("Error: ", error);
+    },
+  });
 }
 
 let sounds = {};
