@@ -1,3 +1,24 @@
+// set up user on firebase
+const uuid = getOrCreateUserId();
+
+// { bestTimes[16] }
+const bestTimesFromFirebase = {
+  // set local bestTimes to db bestTimes if exists
+  setToLocal: async function () {
+    const docSnap = await firestore.getDoc(firestore.doc(db, "players", uuid));
+    if (docSnap.exists()) {
+      bestTimes = docSnap.data().bestTimes;
+    }
+  },
+  // set db bestTime to local bestTimes
+  setToDb: async function () {
+    const playersRef = firestore.collection(db, "players");
+    await firestore.setDoc(firestore.doc(playersRef, uuid), {
+      bestTimes: bestTimes,
+    });
+  },
+};
+
 const CELL_SCALE = 260;
 const OUTLINE_THICKNESS = 4;
 const BO = [360, 300]; // BOARD OFFSET
@@ -447,6 +468,7 @@ let bestTimes = [];
 for (let i = 0; i < LEVELS.length; i++) {
   bestTimes.push(null);
 }
+bestTimesFromFirebase.setToLocal();
 
 let goalImg;
 let transitionSquares = []; // {pos, vel, r, img}
@@ -599,7 +621,7 @@ LBPOS.forEach(function (pos, i) {
             rect(0, 0, 120 * lvbtn.animateProgress, 40 * lvbtn.animateProgress);
             fill(COLORS.LIGHT);
             textSize(32 * lvbtn.animateProgress);
-            text(`${minute}:${sec}`, 0, 0);
+            text(`${minute}:${sec}`, 0, 2);
             pop();
           }
         }
@@ -836,14 +858,27 @@ function triggerWin() {
   sounds.win.play();
   gameEnded = true;
   const prevBestTime = bestTimes[level];
+  // set new best time?
   if (!prevBestTime || prevBestTime > timeElapsed) {
     isNewBest = true;
     bestTimes[level] = timeElapsed;
+    bestTimesFromFirebase.setToDb();
+    sendNewTotalScore();
   }
   // set letters progress
   WIN_TEXT.forEach((obj, i) => {
     obj.progress = i * -0.05;
   });
+}
+
+function sendNewTotalScore() {
+  // calculate total score
+  let newTotalScore = 0;
+  bestTimes.forEach((t) => {
+    if (t === null) return;
+    newTotalScore += Math.max(0, 1000000 - t);
+  });
+  print(newTotalScore);
 }
 
 let sounds = {};
@@ -1686,6 +1721,7 @@ function touchEnded() {
     // stop shifting
     if (shifting.active) {
       shifting.active = false;
+      return;
     }
     // exit button
     if (exitBtn.isHovered) {
