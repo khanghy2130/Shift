@@ -915,7 +915,6 @@ let scaleFactor = 1;
 let canvas;
 function setup() {
   canvas = createCanvas(600, 600, document.getElementById("game-canvas"));
-  stopTouchScrolling(document.getElementById("game-canvas"));
   windowResized();
 
   sounds.win.setVolume(0.5);
@@ -1829,35 +1828,4 @@ function easeOutBounce(x) {
   } else {
     return n1 * (x -= 2.625 / d1) * x + 0.984375;
   }
-}
-
-function stopTouchScrolling(canvas) {
-  // Prevent scrolling when touching the canvas
-  document.body.addEventListener(
-    "touchstart",
-    function (e) {
-      if (e.target == canvas) {
-        e.preventDefault();
-      }
-    },
-    { passive: false }
-  );
-  document.body.addEventListener(
-    "touchend",
-    function (e) {
-      if (e.target == canvas) {
-        e.preventDefault();
-      }
-    },
-    { passive: false }
-  );
-  document.body.addEventListener(
-    "touchmove",
-    function (e) {
-      if (e.target == canvas) {
-        e.preventDefault();
-      }
-    },
-    { passive: false }
-  );
 }
